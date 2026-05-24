@@ -176,7 +176,6 @@ jobs:
         id: doctor_source_dev
         if: ${{ matrix.unsupported_host }}
         timeout-minutes: 10
-        continue-on-error: true
         shell: bash
         run: |
           set +e
@@ -184,13 +183,13 @@ jobs:
           doctor_status=$?
           set -e
           cat ota-doctor-source-dev.json
-          exit $doctor_status
+          echo "status=$doctor_status" >> "$GITHUB_OUTPUT"
 
       - name: Assert unsupported host diagnosis
         if: ${{ matrix.unsupported_host }}
         shell: bash
         run: |
-          if [ "${{ steps.doctor_source_dev.outcome }}" != "failure" ]; then
+          if [ "${{ steps.doctor_source_dev.outputs.status }}" = "0" ]; then
             echo "expected ota doctor to fail on unsupported native Windows host"
             exit 1
           fi
