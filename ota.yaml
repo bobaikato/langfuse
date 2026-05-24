@@ -5,7 +5,7 @@ project:
   type: application
 metadata:
   ota:
-    minimum_version: "1.6.15"
+    minimum_version: "1.6.16"
 execution:
   default_context: host
   contexts:
@@ -71,6 +71,80 @@ surfaces:
       timeout: 3s
       retries: 120
       start_period: 20s
+services:
+  postgres:
+    manager:
+      kind: compose
+      name: dev
+      file: docker-compose.dev.yml
+      service: postgres
+    endpoints:
+      host:
+        address: 127.0.0.1
+        port: 5432
+    readiness:
+      from: host
+      kind: tcp
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+  redis:
+    manager:
+      kind: compose
+      name: dev
+      file: docker-compose.dev.yml
+      service: redis
+    endpoints:
+      host:
+        address: 127.0.0.1
+        port: 6379
+    readiness:
+      from: host
+      kind: tcp
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+  clickhouse:
+    manager:
+      kind: compose
+      name: dev
+      file: docker-compose.dev.yml
+      service: clickhouse
+    endpoints:
+      host:
+        address: 127.0.0.1
+        port: 8123
+    readiness:
+      from: host
+      kind: http
+      method: GET
+      path: /ping
+      success:
+        status:
+          - 200
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+  minio:
+    manager:
+      kind: compose
+      name: dev
+      file: docker-compose.dev.yml
+      service: minio
+    endpoints:
+      host:
+        address: 127.0.0.1
+        port: 9090
+    readiness:
+      from: host
+      kind: tcp
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 tasks:
   setup:env:dev:
     context: host
@@ -194,22 +268,6 @@ tasks:
         - node
       checks:
         - workspace-dependencies-installed
-  infra:dev:up:
-    context: host
-    description: Start local development infrastructure containers
-    notes: |
-      This maps directly to the documented and CI-internal dev compose stack.
-      It provisions PostgreSQL, Redis, ClickHouse, and MinIO for source development.
-    category: setup
-    run: docker compose -f docker-compose.dev.yml up -d --wait --wait-timeout 180
-    effects:
-      external_state:
-        - docker
-    depends_on:
-      - setup:env:dev
-    requirements:
-      tools:
-        docker: "*"
   infra:dev:down:
     context: host
     description: Stop local development infrastructure containers
@@ -233,7 +291,8 @@ tasks:
         - postgres
     depends_on:
       - install
-      - infra:dev:up
+    requires_services:
+      - postgres
     requirements:
       toolchains:
         - node
@@ -252,7 +311,8 @@ tasks:
         - clickhouse
     depends_on:
       - install
-      - infra:dev:up
+    requires_services:
+      - clickhouse
     requirements:
       toolchains:
         - node
@@ -274,6 +334,8 @@ tasks:
         - clickhouse
     depends_on:
       - ch:up
+    requires_services:
+      - clickhouse
     requirements:
       toolchains:
         - node
@@ -292,6 +354,9 @@ tasks:
     depends_on:
       - db:migrate
       - ch:up
+    requires_services:
+      - postgres
+      - clickhouse
     requirements:
       toolchains:
         - node
@@ -306,6 +371,9 @@ tasks:
     depends_on:
       - db:migrate
       - ch:up
+    requires_services:
+      - postgres
+      - clickhouse
     requirements:
       toolchains:
         - node
@@ -328,9 +396,13 @@ tasks:
     depends_on:
       - setup:env:test
       - install
-      - infra:dev:up
       - db:migrate
       - ch:up
+    requires_services:
+      - postgres
+      - redis
+      - clickhouse
+      - minio
     requirements:
       toolchains:
         - node
@@ -346,11 +418,15 @@ tasks:
     run: pnpm run dev
     depends_on:
       - install
-      - infra:dev:up
       - db:migrate
       - ch:up
       - ch:dev-tables
       - db:seed:examples
+    requires_services:
+      - postgres
+      - redis
+      - clickhouse
+      - minio
     requirements:
       toolchains:
         - node
@@ -373,9 +449,13 @@ tasks:
     run: pnpm run start
     depends_on:
       - build:ci
-      - infra:dev:up
       - db:migrate
       - ch:up
+    requires_services:
+      - postgres
+      - redis
+      - clickhouse
+      - minio
     requirements:
       toolchains:
         - node
