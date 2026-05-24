@@ -77,6 +77,11 @@ web/test-results/*
 .playwright-mcp/*
 .codex-artifacts/
 
+# Ota local runtime artifacts
+.ota/state/
+.ota/receipts/
+.ota/proof/
+
 # Local DeepSec workspace and generated scan state
 .deepsec/
 

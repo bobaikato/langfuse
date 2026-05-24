@@ -1,0 +1,613 @@
+version: 1
+project:
+  name: langfuse
+  description: Langfuse readiness slice covering documented source development, CI-style verification, published self-host compose runtime, and source docker-build runtime; release/publish and cloud deployment workflows remain out of scope
+  type: application
+metadata:
+  ota:
+    minimum_version: "1.6.15"
+execution:
+  default_context: host
+  contexts:
+    host:
+      backend: native
+      only_on:
+        - linux
+        - macos
+toolchains:
+  node:
+    provider: corepack
+    version: "24"
+    package_managers:
+      pnpm: "11.1.3"
+tools:
+  docker:
+    version: "*"
+    required: false
+  migrate:
+    version: "*"
+    required: false
+  clickhouse:
+    version: "*"
+    required: false
+env:
+  sources:
+    - kind: dotenv
+      path: .env
+    - kind: dotenv
+      path: .env.test
+surfaces:
+  web:
+    kind: http
+    port: 3000
+    path: /
+    readiness:
+      kind: http
+      method: GET
+      path: /api/public/health
+      success:
+        status:
+          - 200
+      body:
+        contains: '"status":"OK"'
+      interval: 5s
+      timeout: 3s
+      retries: 120
+      start_period: 20s
+  worker:
+    kind: http
+    port: 3030
+    path: /api/health
+    readiness:
+      kind: http
+      method: GET
+      path: /api/health
+      success:
+        status:
+          - 200
+      body:
+        contains: '"status":"ok"'
+      interval: 5s
+      timeout: 3s
+      retries: 120
+      start_period: 20s
+tasks:
+  setup:env:dev:
+    context: host
+    description: Create `.env` from the documented development template when missing
+    notes: |
+      This follows the contributor setup path in `CONTRIBUTING.md`.
+      It copies `.env.dev.example` to `.env` only when `.env` is absent.
+    category: setup
+    action:
+      kind: copy_if_missing
+      from: .env.dev.example
+      to: .env
+    effects:
+      writes:
+        - .env
+  setup:env:test:
+    context: host
+    description: Create `.env.test` from the test template when missing
+    notes: |
+      The test template isolates PostgreSQL and Redis for repository tests.
+      It is optional for pure lint/build loops but required for isolated test execution.
+    category: setup
+    action:
+      kind: copy_if_missing
+      from: .env.test.example
+      to: .env.test
+    effects:
+      writes:
+        - .env.test
+  setup:env:prod:
+    context: host
+    description: Create `.env` from the self-host production template when missing
+    notes: |
+      Use this for the published self-host compose path.
+      It copies `.env.prod.example` to `.env` only when `.env` is absent.
+    category: setup
+    action:
+      kind: copy_if_missing
+      from: .env.prod.example
+      to: .env
+    effects:
+      writes:
+        - .env
+  install:
+    context: host
+    description: Install monorepo dependencies with pnpm
+    notes: |
+      This maps directly to repository root install commands used in contributor docs and CI.
+    category: setup
+    run: pnpm install
+    effects:
+      writes:
+        - node_modules
+      network: true
+    depends_on:
+      - setup:env:dev
+    requirements:
+      toolchains:
+        - node
+  lint:
+    context: host
+    description: Run repository lint checks
+    notes: |
+      This maps directly to the CI lint phase (`pnpm run lint`).
+    category: test
+    run: pnpm run lint
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+    safe_for_agent: true
+  typecheck:
+    context: host
+    description: Run repository type checks
+    notes: |
+      This maps directly to the CI typecheck phase (`pnpm run typecheck`).
+    category: test
+    run: pnpm run typecheck
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+    safe_for_agent: true
+  build:
+    context: host
+    description: Build all workspace packages through Turbo
+    notes: |
+      This maps directly to CI build phases for web/worker validation.
+    category: build
+    run: pnpm run build
+    effects:
+      writes:
+        - .turbo
+        - web/.next
+        - worker/dist
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+    safe_for_agent: true
+  build:ci:
+    context: host
+    description: Install dependencies, then build all workspace packages through Turbo
+    notes: |
+      This is the from-scratch build path used by runtime workflows.
+      Keep `build` itself dependency-free so agent-safe verification does not imply networked install.
+    category: build
+    run: pnpm run build
+    effects:
+      writes:
+        - .turbo
+        - web/.next
+        - worker/dist
+    depends_on:
+      - install
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+  infra:dev:up:
+    context: host
+    description: Start local development infrastructure containers
+    notes: |
+      This maps directly to the documented and CI-internal dev compose stack.
+      It provisions PostgreSQL, Redis, ClickHouse, and MinIO for source development.
+    category: setup
+    run: docker compose -f docker-compose.dev.yml up -d --wait --wait-timeout 180
+    effects:
+      external_state:
+        - docker
+    depends_on:
+      - setup:env:dev
+    requirements:
+      tools:
+        docker: "*"
+  infra:dev:down:
+    context: host
+    description: Stop local development infrastructure containers
+    category: setup
+    run: docker compose -f docker-compose.dev.yml down
+    effects:
+      external_state:
+        - docker
+    requirements:
+      tools:
+        docker: "*"
+  db:migrate:
+    context: host
+    description: Apply Prisma migrations for local development
+    notes: |
+      This follows CI and contributor paths after infrastructure startup.
+    category: setup
+    run: pnpm run db:migrate
+    effects:
+      external_state:
+        - postgres
+    depends_on:
+      - install
+      - infra:dev:up
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+  ch:up:
+    context: host
+    description: Apply ClickHouse migrations for local development
+    notes: |
+      This runs `packages/shared/clickhouse/scripts/up.sh` through the shared package script.
+      It requires `golang-migrate` on the host.
+    category: setup
+    run: pnpm --filter=shared run ch:up
+    effects:
+      external_state:
+        - clickhouse
+    depends_on:
+      - install
+      - infra:dev:up
+    requirements:
+      toolchains:
+        - node
+      tools:
+        migrate: "*"
+      checks:
+        - workspace-dependencies-installed
+        - golang-migrate-installed
+  ch:dev-tables:
+    context: host
+    description: Create development-only ClickHouse tables used by dev and CI flows
+    notes: |
+      This runs `packages/shared/clickhouse/scripts/dev-tables.sh`.
+      It requires the host `clickhouse` CLI binary.
+    category: setup
+    run: pnpm --filter=shared run ch:dev-tables
+    effects:
+      external_state:
+        - clickhouse
+    depends_on:
+      - ch:up
+    requirements:
+      toolchains:
+        - node
+      tools:
+        clickhouse: "*"
+      checks:
+        - clickhouse-cli-installed
+  db:seed:
+    context: host
+    description: Seed local database with standard repository seed data
+    category: setup
+    run: pnpm --filter=shared run db:seed
+    effects:
+      external_state:
+        - postgres
+    depends_on:
+      - db:migrate
+      - ch:up
+    requirements:
+      toolchains:
+        - node
+  db:seed:examples:
+    context: host
+    description: Seed local database with example project data
+    category: setup
+    run: pnpm run db:seed:examples
+    effects:
+      external_state:
+        - postgres
+    depends_on:
+      - db:migrate
+      - ch:up
+    requirements:
+      toolchains:
+        - node
+  verify:ci:
+    context: host
+    description: Run the main CI-style verify sequence for source changes
+    notes: |
+      This maps to the highest-signal root checks from `pipeline.yml`: lint, typecheck, build, and turbo tests.
+      Tests run against local infra and isolated test env overlays.
+    category: test
+    run: pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test
+    effects:
+      writes:
+        - .turbo
+        - web/.next
+        - worker/dist
+      external_state:
+        - postgres
+        - clickhouse
+    depends_on:
+      - setup:env:test
+      - install
+      - infra:dev:up
+      - db:migrate
+      - ch:up
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+  dev:
+    context: host
+    description: Start the documented source development workflow
+    notes: |
+      This follows contributor docs (`pnpm run dev`) after local infra and schema setup.
+      It starts the web and worker development services from source.
+    category: dev
+    run: pnpm run dev
+    depends_on:
+      - install
+      - infra:dev:up
+      - db:migrate
+      - ch:up
+      - ch:dev-tables
+      - db:seed:examples
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+    runtime:
+      kind: service
+      surfaces:
+        web:
+          project:
+            host:
+              primary: true
+        worker: {}
+  start:
+    context: host
+    description: Start the built production-mode source services
+    notes: |
+      This maps to the repo `start` script used by CI server-e2e paths after `pnpm run build`.
+    category: dev
+    run: pnpm run start
+    depends_on:
+      - build:ci
+      - infra:dev:up
+      - db:migrate
+      - ch:up
+    requirements:
+      toolchains:
+        - node
+      checks:
+        - workspace-dependencies-installed
+    runtime:
+      kind: service
+      surfaces:
+        web:
+          project:
+            host:
+              primary: true
+        worker: {}
+  selfhost:compose:
+    context: host
+    description: Start the published self-host Docker Compose stack
+    notes: |
+      This follows the main README local self-host path (`docker compose up`).
+      It runs packaged `langfuse` and `langfuse-worker` images with local dependencies.
+    category: dev
+    run: docker compose up -d --wait --wait-timeout 180
+    effects:
+      network: true
+      external_state:
+        - docker
+    depends_on:
+      - setup:env:prod
+    requirements:
+      tools:
+        docker: "*"
+    runtime:
+      kind: service
+      surfaces:
+        web:
+          project:
+            host:
+              primary: true
+        worker: {}
+  selfhost:compose:down:
+    context: host
+    description: Stop the published self-host Docker Compose stack
+    category: setup
+    run: docker compose down
+    effects:
+      external_state:
+        - docker
+    requirements:
+      tools:
+        docker: "*"
+  build:docker:
+    context: host
+    description: Build source Docker images with the repository docker-build compose file
+    notes: |
+      This maps to `test-docker-build` CI behavior before runtime checks.
+    category: build
+    run: docker compose -f docker-compose.build.yml build
+    effects:
+      network: true
+      external_state:
+        - docker
+    depends_on:
+      - setup:env:dev
+    requirements:
+      tools:
+        docker: "*"
+  run:docker:
+    context: host
+    description: Start source-built Docker stack and wait for health checks
+    notes: |
+      This maps to CI docker-build readiness checks against web (`3000`) and worker (`3030`) APIs.
+    category: dev
+    run: docker compose -f docker-compose.build.yml up -d --wait --wait-timeout 180
+    effects:
+      external_state:
+        - docker
+    depends_on:
+      - build:docker
+    requirements:
+      tools:
+        docker: "*"
+    runtime:
+      kind: service
+      surfaces:
+        web:
+          project:
+            host:
+              primary: true
+        worker: {}
+  stop:docker:
+    context: host
+    description: Stop source-built Docker stack
+    category: setup
+    run: docker compose -f docker-compose.build.yml down
+    effects:
+      external_state:
+        - docker
+    requirements:
+      tools:
+        docker: "*"
+workflows:
+  default: source-dev
+  source-dev:
+    intent: local_development
+    description: Canonical contributor path from source with local infra dependencies
+    notes: |
+      This mirrors the contributor docs flow with explicit deterministic steps instead of `dx`.
+      It is the strongest path for source development readiness pressure-testing.
+    prepare:
+      task: setup:env:dev
+    setup:
+      task: db:seed:examples
+    run:
+      task: dev
+    readiness:
+      surfaces:
+        - web
+        - worker
+    exposes:
+      - surface: web
+      - surface: worker
+  source-start:
+    intent: ci_verification
+    description: CI-style build then start path from source
+    prepare:
+      task: setup:env:dev
+    setup:
+      task: build:ci
+    run:
+      task: start
+    readiness:
+      surfaces:
+        - web
+        - worker
+    exposes:
+      - surface: web
+      - surface: worker
+  verify:
+    intent: ci_verification
+    description: CI-style root verification sequence over source
+    prepare:
+      task: setup:env:dev
+    run:
+      task: verify:ci
+  selfhost:
+    intent: packaged_runtime
+    description: README self-host flow using published Docker images
+    prepare:
+      task: setup:env:prod
+    run:
+      task: selfhost:compose
+    readiness:
+      surfaces:
+        - web
+        - worker
+    exposes:
+      - surface: web
+      - surface: worker
+  docker-build:
+    intent: packaged_runtime
+    description: Source docker-build compose path used in CI docker image verification
+    prepare:
+      task: setup:env:dev
+    run:
+      task: run:docker
+    readiness:
+      surfaces:
+        - web
+        - worker
+    exposes:
+      - surface: web
+      - surface: worker
+checks:
+  - name: workspace-dependencies-installed
+    kind: file
+    severity: error
+    path: node_modules/.modules.yaml
+    expect: file
+    timeout: 10000
+  - name: golang-migrate-installed
+    kind: precondition
+    severity: error
+    run: sh -c "migrate -version"
+    timeout: 10000
+  - name: clickhouse-cli-installed
+    kind: precondition
+    severity: error
+    run: sh -c "clickhouse client --version"
+    timeout: 10000
+agent:
+  posture: readiness_strict
+  entrypoint: install
+  default_task: verify:ci
+  safe_tasks:
+    - lint
+    - typecheck
+    - build
+  verify_after_changes:
+    - lint
+    - typecheck
+    - build
+  writable_paths:
+    - web
+    - worker
+    - packages
+    - ee
+    - scripts
+    - CONTRIBUTING.md
+    - .turbo
+  protected_paths:
+    - ota.yaml
+    - .env
+    - .env.test
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+    - turbo.json
+    - docker-compose.yml
+    - docker-compose.dev.yml
+    - docker-compose.dev-azure.yml
+    - docker-compose.dev-redis-cluster.yml
+    - docker-compose.build.yml
+    - .env.dev.example
+    - .env.dev-azure.example
+    - .env.dev-redis-cluster.example
+    - .env.prod.example
+    - .env.test.example
+    - .github/ISSUE_TEMPLATE
+    - .github/workflows
+    - .github/workflows/release.yml
+  notes: |
+    This readiness slice intentionally models the strongest repository-owned development and runtime front doors.
+    It does not model cloud deploy, release automation, or enterprise-specific deployment workflows.
+    `source-dev` is the default because it is the most direct contributor readiness proof from source.
+    `selfhost` and `docker-build` are included as separate workflows because they use distinct compose files
+    and represent different operational truths (published images vs source-built images).

@@ -1,0 +1,305 @@
+name: 'Test: Ota contract matrix'
+
+on:
+  workflow_dispatch:
+    inputs:
+      ota_repository:
+        description: Ota source repository to build for this matrix run
+        required: false
+        default: ota-run/ota
+      ota_ref:
+        description: Ota branch, tag, or commit to build for this matrix run
+        required: false
+        default: 06444cf0388b0eed5469225fb21035a39d8b09fc
+      run_source_docker_build:
+        description: Also prove the source-built docker-compose runtime
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+  pull_request:
+    paths:
+      - 'ota.yaml'
+      - '.gitignore'
+      - '.github/workflows/test-ota-contract-matrix.yml'
+  push:
+    paths:
+      - 'ota.yaml'
+      - '.gitignore'
+      - '.github/workflows/test-ota-contract-matrix.yml'
+
+concurrency:
+  group: ota-contract-matrix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  OTA_NO_UPDATE_CHECK: '1'
+  CLICKHOUSE_CLIENT_VERSION: '25.12.9.61'
+
+jobs:
+  contract:
+    name: Ota Contract Matrix (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-bash
+            os: ubuntu-latest
+            unsupported_host: false
+            native_deps: true
+            docker_ready: true
+          - name: macos-bash
+            os: macos-latest
+            unsupported_host: false
+            native_deps: false
+            docker_ready: false
+          - name: windows-bash
+            os: windows-latest
+            unsupported_host: true
+            native_deps: false
+            docker_ready: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 24
+        if: ${{ !matrix.unsupported_host }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Enable pinned pnpm through Corepack
+        if: ${{ !matrix.unsupported_host }}
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.1.3 --activate
+          node --version
+          pnpm --version
+
+      - name: Install native CI prerequisites on Ubuntu
+        if: ${{ matrix.native_deps }}
+        shell: bash
+        run: |
+          curl --fail --location --retry 5 --retry-delay 2 --retry-all-errors \
+            --output migrate.linux-amd64.tar.gz \
+            https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz
+          tar xzf migrate.linux-amd64.tar.gz
+          sudo mv migrate /usr/local/bin/migrate
+          migrate -version
+
+          wget "https://packages.clickhouse.com/deb/pool/main/c/clickhouse/clickhouse-common-static_${CLICKHOUSE_CLIENT_VERSION}_amd64.deb" -O clickhouse-client.deb
+          dpkg-deb -x clickhouse-client.deb ch_client_dir
+          sudo cp ch_client_dir/usr/bin/clickhouse /usr/local/bin/
+          clickhouse client --version
+
+      - name: Install ota from source
+        uses: ota-run/ota/.github/actions/install-ota-from-source@06444cf0388b0eed5469225fb21035a39d8b09fc
+        with:
+          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
+          ref: ${{ github.event.inputs.ota_ref || '06444cf0388b0eed5469225fb21035a39d8b09fc' }}
+
+      - name: Validate contract
+        shell: bash
+        run: |
+          ota validate --json . > ota-validate.json
+          ota validate .
+
+      - name: List source-dev workflow tasks
+        shell: bash
+        run: ota tasks --workflow source-dev .
+
+      - name: List source-start workflow tasks
+        shell: bash
+        run: ota tasks --workflow source-start .
+
+      - name: List verify workflow tasks
+        shell: bash
+        run: ota tasks --workflow verify .
+
+      - name: List selfhost workflow tasks
+        shell: bash
+        run: ota tasks --workflow selfhost .
+
+      - name: List docker-build workflow tasks
+        shell: bash
+        run: ota tasks --workflow docker-build .
+
+      - name: Export execution topology
+        shell: bash
+        run: |
+          ota execution topology --json . > ota-execution-topology.json
+          cat ota-execution-topology.json
+
+      - name: Dry-run install task
+        if: ${{ !matrix.unsupported_host }}
+        shell: bash
+        run: ota run install --dry-run .
+
+      - name: Dry-run source-dev workflow
+        if: ${{ matrix.native_deps && matrix.docker_ready }}
+        shell: bash
+        run: ota up --workflow source-dev --native --dry-run .
+
+      - name: Dry-run source-start workflow
+        if: ${{ matrix.native_deps && matrix.docker_ready }}
+        shell: bash
+        run: ota up --workflow source-start --native --dry-run .
+
+      - name: Dry-run verify workflow
+        if: ${{ matrix.native_deps && matrix.docker_ready }}
+        shell: bash
+        run: ota up --workflow verify --native --dry-run .
+
+      - name: Dry-run selfhost workflow
+        if: ${{ matrix.docker_ready }}
+        shell: bash
+        run: ota up --workflow selfhost --native --dry-run .
+
+      - name: Dry-run docker-build workflow
+        if: ${{ matrix.docker_ready }}
+        shell: bash
+        run: ota up --workflow docker-build --native --dry-run .
+
+      - name: Doctor source-dev unsupported host
+        id: doctor_source_dev
+        if: ${{ matrix.unsupported_host }}
+        timeout-minutes: 10
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          ota doctor --workflow source-dev --json . > ota-doctor-source-dev.json
+          doctor_status=$?
+          set -e
+          cat ota-doctor-source-dev.json
+          exit $doctor_status
+
+      - name: Assert unsupported host diagnosis
+        if: ${{ matrix.unsupported_host }}
+        shell: bash
+        run: |
+          if [ "${{ steps.doctor_source_dev.outcome }}" != "failure" ]; then
+            echo "expected ota doctor to fail on unsupported native Windows host"
+            exit 1
+          fi
+          grep -F "Unsupported host platform for context" ota-doctor-source-dev.json
+
+      - name: Dry-run source-dev reports unsupported host
+        if: ${{ matrix.unsupported_host }}
+        shell: bash
+        run: |
+          set +e
+          ota up --workflow source-dev --native --dry-run . > ota-up-source-dev.txt 2>&1
+          status=$?
+          set -e
+          cat ota-up-source-dev.txt
+          if [ "$status" -eq 0 ]; then
+            echo "expected ota up --dry-run to fail on unsupported native Windows host"
+            exit 1
+          fi
+          grep -F "Unsupported host platform for context" ota-up-source-dev.txt
+
+      - name: Upload failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-contract-matrix-${{ matrix.name }}
+          include-hidden-files: true
+          path: |
+            ota-validate.json
+            ota-execution-topology.json
+            ota-doctor-source-dev.json
+            ota-up-source-dev.txt
+
+  runtime-selfhost:
+    name: Ota Runtime Proof (selfhost)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    needs: contract
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install ota from source
+        uses: ota-run/ota/.github/actions/install-ota-from-source@06444cf0388b0eed5469225fb21035a39d8b09fc
+        with:
+          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
+          ref: ${{ github.event.inputs.ota_ref || '06444cf0388b0eed5469225fb21035a39d8b09fc' }}
+
+      - name: Prove selfhost runtime
+        shell: bash
+        run: |
+          ota clean . || true
+          set +e
+          ota proof runtime --workflow selfhost --json . > ota-proof-selfhost.json
+          status=$?
+          cat ota-proof-selfhost.json
+          if [ "$status" -eq 0 ]; then
+            ota clean . || true
+          fi
+          exit "$status"
+
+      - name: Upload failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-runtime-selfhost
+          include-hidden-files: true
+          path: |
+            ota-proof-selfhost.json
+            .ota/proof/selfhost/
+
+  runtime-docker-build:
+    name: Ota Runtime Proof (source docker-build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    needs: contract
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_source_docker_build == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install ota from source
+        uses: ota-run/ota/.github/actions/install-ota-from-source@06444cf0388b0eed5469225fb21035a39d8b09fc
+        with:
+          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
+          ref: ${{ github.event.inputs.ota_ref || '06444cf0388b0eed5469225fb21035a39d8b09fc' }}
+
+      - name: Prove source-built docker runtime
+        shell: bash
+        run: |
+          ota clean . || true
+          set +e
+          ota proof runtime --workflow docker-build --json . > ota-proof-docker-build.json
+          status=$?
+          cat ota-proof-docker-build.json
+          if [ "$status" -eq 0 ]; then
+            ota clean . || true
+          fi
+          exit "$status"
+
+      - name: Upload failure artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-runtime-docker-build
+          include-hidden-files: true
+          path: |
+            ota-proof-docker-build.json
+            .ota/proof/docker-build/
