@@ -396,7 +396,7 @@ tasks:
       This follows the main README local self-host path (`docker compose up`).
       It runs packaged `langfuse` and `langfuse-worker` images with local dependencies.
     category: dev
-    run: docker compose up -d --wait --wait-timeout 180
+    run: docker compose up -d
     effects:
       network: true
       external_state:
@@ -447,7 +447,7 @@ tasks:
     notes: |
       This maps to CI docker-build readiness checks against web (`3000`) and worker (`3030`) APIs.
     category: dev
-    run: docker compose -f docker-compose.build.yml up -d --wait --wait-timeout 180
+    run: docker compose -f docker-compose.build.yml up -d
     effects:
       external_state:
         - docker
