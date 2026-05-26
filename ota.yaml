@@ -689,12 +689,16 @@ agent:
     - .github/workflows/release.yml
   bootstrap:
     ota:
-      note: Only install Ota if it is missing and installation is approved.
+      note: Install ota when missing so contributors and agents can run the readiness workflows declared in this contract.
       sh: curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION=v1.6.16 sh
       powershell: $env:OTA_VERSION='v1.6.16'; irm https://dist.ota.run/install.ps1 | iex
   notes: |
-    This readiness slice intentionally models the strongest repository-owned development and runtime front doors.
-    It does not model cloud deploy, release automation, or enterprise-specific deployment workflows.
-    `source-dev` is the default because it is the most direct contributor readiness proof from source.
-    `selfhost` and `docker-build` are included as separate workflows because they use distinct compose files
-    and represent different operational truths (published images vs source-built images).
+    Use `ota tasks --use .` to list runnable tasks and review the agent-safe surface before execution.
+    Use `ota run setup:env:dev .` and `ota run setup:env:prod .` to create env files only when missing.
+    Use `ota up --workflow source-dev --native .` for the canonical source contributor loop.
+    Use `ota up --workflow source-start --native .` for CI-style build then startup from source.
+    Use `ota up --workflow verify --native .` before PRs.
+    Use `ota up --workflow selfhost --native .` for README self-host runtime from published images.
+    Use `ota up --workflow docker-build --native .` for source-built docker compose runtime proof.
+    Protected paths include compose/env/workflow and release surfaces; keep runtime setup through
+    setup tasks and workflow runs instead of direct file mutation.
