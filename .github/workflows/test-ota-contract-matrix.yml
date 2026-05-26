@@ -10,7 +10,7 @@ on:
       ota_ref:
         description: Ota branch, tag, or commit to build for this matrix run
         required: false
-        default: 06444cf0388b0eed5469225fb21035a39d8b09fc
+        default: v1.6.16
       run_source_docker_build:
         description: Also prove the source-built docker-compose runtime
         required: false
@@ -108,7 +108,7 @@ jobs:
         uses: ota-run/ota/.github/actions/install-ota-from-source@06444cf0388b0eed5469225fb21035a39d8b09fc
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '06444cf0388b0eed5469225fb21035a39d8b09fc' }}
+          ref: ${{ github.event.inputs.ota_ref || 'v1.6.16' }}
 
       - name: Validate contract
         shell: bash
