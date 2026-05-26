@@ -698,6 +698,8 @@ agent:
     Use `ota up --workflow source-dev --native .` for the canonical source contributor loop.
     Use `ota up --workflow source-start --native .` for CI-style build then startup from source.
     Use `ota up --workflow verify --native .` before PRs.
+    Container mode is intentionally not modeled for source workflows in this slice because
+    verify/source paths depend on host-bound local service orchestration.
     Use `ota up --workflow selfhost --native .` for README self-host runtime from published images.
     Use `ota up --workflow docker-build --native .` for source-built docker compose runtime proof.
     Protected paths include compose/env/workflow and release surfaces; keep runtime setup through
