@@ -116,6 +116,12 @@ jobs:
           ota validate --json . > ota-validate.json
           ota validate .
 
+      - name: Export task catalog
+        shell: bash
+        run: |
+          ota tasks --json . > ota-tasks.json
+          cat ota-tasks.json
+
       - name: List source-dev workflow tasks
         shell: bash
         run: ota tasks --workflow source-dev .
@@ -139,38 +145,68 @@ jobs:
       - name: Export execution topology
         shell: bash
         run: |
-          ota execution topology --json . > ota-execution-topology.json
+          if ota execution topology --help > /dev/null 2>&1; then
+            ota execution topology --json . > ota-execution-topology.json
+          else
+            printf '%s\n' '{"ok":false,"skipped":true,"reason":"ota execution topology is not available in this ota build"}' > ota-execution-topology.json
+          fi
           cat ota-execution-topology.json
 
       - name: Dry-run install task
         if: ${{ !matrix.unsupported_host }}
         shell: bash
-        run: ota run install --dry-run .
+        run: |
+          ota run install --dry-run --json . > ota-run-install-dry-run.json
+          cat ota-run-install-dry-run.json
+
+      - name: Dry-run verify task
+        if: ${{ matrix.native_deps }}
+        shell: bash
+        run: |
+          ota run verify:ci --dry-run --json . > ota-run-verify-ci-dry-run.json
+          cat ota-run-verify-ci-dry-run.json
+
+      - name: Dry-run default workflow
+        if: ${{ matrix.native_deps && matrix.docker_ready }}
+        shell: bash
+        run: |
+          ota up --dry-run --json . > ota-up-default-dry-run.json
+          cat ota-up-default-dry-run.json
 
       - name: Dry-run source-dev workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
-        run: ota up --workflow source-dev --native --dry-run .
+        run: |
+          ota up --workflow source-dev --native --dry-run --json . > ota-up-source-dev-dry-run.json
+          cat ota-up-source-dev-dry-run.json
 
       - name: Dry-run source-start workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
-        run: ota up --workflow source-start --native --dry-run .
+        run: |
+          ota up --workflow source-start --native --dry-run --json . > ota-up-source-start-dry-run.json
+          cat ota-up-source-start-dry-run.json
 
       - name: Dry-run verify workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
-        run: ota up --workflow verify --native --dry-run .
+        run: |
+          ota up --workflow verify --native --dry-run --json . > ota-up-verify-dry-run.json
+          cat ota-up-verify-dry-run.json
 
       - name: Dry-run selfhost workflow
         if: ${{ matrix.docker_ready }}
         shell: bash
-        run: ota up --workflow selfhost --native --dry-run .
+        run: |
+          ota up --workflow selfhost --native --dry-run --json . > ota-up-selfhost-dry-run.json
+          cat ota-up-selfhost-dry-run.json
 
       - name: Dry-run docker-build workflow
         if: ${{ matrix.docker_ready }}
         shell: bash
-        run: ota up --workflow docker-build --native --dry-run .
+        run: |
+          ota up --workflow docker-build --native --dry-run --json . > ota-up-docker-build-dry-run.json
+          cat ota-up-docker-build-dry-run.json
 
       - name: Doctor source-dev unsupported host
         id: doctor_source_dev
@@ -218,7 +254,16 @@ jobs:
           include-hidden-files: true
           path: |
             ota-validate.json
+            ota-tasks.json
             ota-execution-topology.json
+            ota-run-install-dry-run.json
+            ota-run-verify-ci-dry-run.json
+            ota-up-default-dry-run.json
+            ota-up-source-dev-dry-run.json
+            ota-up-source-start-dry-run.json
+            ota-up-verify-dry-run.json
+            ota-up-selfhost-dry-run.json
+            ota-up-docker-build-dry-run.json
             ota-doctor-source-dev.json
             ota-up-source-dev.txt
 
