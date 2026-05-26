@@ -10,9 +10,9 @@ on:
       ota_ref:
         description: Ota branch, tag, or commit to build for this matrix run
         required: false
-        default: v1.6.16
+        default: bobai/gap3-smoke-verdict-contract
       run_source_docker_build:
-        description: Also prove the source-built docker-compose runtime
+        description: Also prove the docker-build runtime workflow
         required: false
         default: 'false'
         type: choice
@@ -108,7 +108,7 @@ jobs:
         uses: ota-run/ota/.github/actions/install-ota-from-source@v1.6.16
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || 'v1.6.16' }}
+          ref: ${{ github.event.inputs.ota_ref || 'bobai/gap3-smoke-verdict-contract' }}
 
       - name: Validate contract
         shell: bash
@@ -282,7 +282,7 @@ jobs:
         uses: ota-run/ota/.github/actions/install-ota-from-source@v1.6.16
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || 'v1.6.16' }}
+          ref: ${{ github.event.inputs.ota_ref || 'bobai/gap3-smoke-verdict-contract' }}
 
       - name: Prove selfhost runtime
         shell: bash
@@ -323,9 +323,9 @@ jobs:
         uses: ota-run/ota/.github/actions/install-ota-from-source@v1.6.16
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || 'v1.6.16' }}
+          ref: ${{ github.event.inputs.ota_ref || 'bobai/gap3-smoke-verdict-contract' }}
 
-      - name: Prove source-built docker runtime
+      - name: Prove docker-build runtime
         shell: bash
         run: |
           ota clean . || true
