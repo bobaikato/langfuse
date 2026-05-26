@@ -43,7 +43,7 @@ env:
 
 jobs:
   contract:
-    name: Ota Contract Matrix (Cross-OS + Ubuntu Runtime - ${{ matrix.name }})
+    name: Ota Contract Matrix (${{ matrix.mode_label }} - ${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -55,16 +55,19 @@ jobs:
             unsupported_host: false
             native_deps: true
             docker_ready: true
+            mode_label: native+container-pre-run
           - name: macos-bash
             os: macos-latest
             unsupported_host: false
             native_deps: false
             docker_ready: false
+            mode_label: native+container-pre-run
           - name: windows-bash
             os: windows-latest
             unsupported_host: true
             native_deps: false
             docker_ready: false
+            mode_label: native+container-pre-run
 
     steps:
       - name: Checkout
@@ -282,7 +285,7 @@ jobs:
             ota-up-source-dev.txt
 
   runtime-selfhost:
-    name: Ota Runtime Proof (selfhost)
+    name: Ota Runtime Proof (native-selfhost-runtime)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     needs: contract

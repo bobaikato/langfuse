@@ -188,6 +188,24 @@ tasks:
     effects:
       writes:
         - .env
+  setup:env:prod:compose-compat:
+    context: host
+    description: Normalize self-host database host values for compose service naming
+    notes: |
+      The compose stack service is named `postgres`.
+      If `.env` still carries the historical `@db:5432` host from the template, rewrite it to `@postgres:5432`
+      so published self-host runtime proof can reach the database deterministically.
+    category: setup
+    run: |
+      sh -c 'if [ -f .env ]; then
+        sed -i.bak "s/@db:5432\\//@postgres:5432\\//g" .env
+        rm -f .env.bak
+      fi'
+    depends_on:
+      - setup:env:prod
+    effects:
+      writes:
+        - .env
   install:
     context: host
     description: Install monorepo dependencies with pnpm
@@ -484,7 +502,7 @@ tasks:
       external_state:
         - docker
     depends_on:
-      - setup:env:prod
+      - setup:env:prod:compose-compat
     requirements:
       tools:
         docker: "*"
