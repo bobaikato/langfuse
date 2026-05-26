@@ -282,7 +282,7 @@ jobs:
         uses: ota-run/ota/.github/actions/install-ota-from-source@06444cf0388b0eed5469225fb21035a39d8b09fc
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '06444cf0388b0eed5469225fb21035a39d8b09fc' }}
+          ref: ${{ github.event.inputs.ota_ref || 'v1.6.16' }}
 
       - name: Prove selfhost runtime
         shell: bash
@@ -323,7 +323,7 @@ jobs:
         uses: ota-run/ota/.github/actions/install-ota-from-source@06444cf0388b0eed5469225fb21035a39d8b09fc
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '06444cf0388b0eed5469225fb21035a39d8b09fc' }}
+          ref: ${{ github.event.inputs.ota_ref || 'v1.6.16' }}
 
       - name: Prove source-built docker runtime
         shell: bash
