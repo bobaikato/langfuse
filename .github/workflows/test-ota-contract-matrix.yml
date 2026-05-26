@@ -43,7 +43,7 @@ env:
 
 jobs:
   contract:
-    name: Ota Contract Matrix (${{ matrix.name }})
+    name: Ota Contract Matrix (Cross-OS + Ubuntu Runtime - ${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
@@ -208,6 +208,19 @@ jobs:
           ota up --workflow docker-build --native --dry-run --json . > ota-up-docker-build-dry-run.json
           cat ota-up-docker-build-dry-run.json
 
+      - name: Dry-run verify workflow (container mode, cross-OS)
+        shell: bash
+        run: |
+          set +e
+          ota up --workflow verify --container --dry-run --json . > ota-up-verify-container-dry-run.json
+          status=$?
+          set -e
+          grep -q '"dry_run"' ota-up-verify-container-dry-run.json
+          grep -q '"status"' ota-up-verify-container-dry-run.json
+          if [ "$status" -ne 0 ]; then
+            echo "container dry-run blocked on this host (expected on non-Ubuntu hosted runners)"
+          fi
+
       - name: Doctor source-dev unsupported host
         id: doctor_source_dev
         if: ${{ matrix.unsupported_host }}
@@ -262,6 +275,7 @@ jobs:
             ota-up-source-dev-dry-run.json
             ota-up-source-start-dry-run.json
             ota-up-verify-dry-run.json
+            ota-up-verify-container-dry-run.json
             ota-up-selfhost-dry-run.json
             ota-up-docker-build-dry-run.json
             ota-doctor-source-dev.json
