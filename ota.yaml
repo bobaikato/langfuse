@@ -378,6 +378,7 @@ tasks:
     requirements:
       toolchains:
         - node
+    internal: true
   db:seed:examples:
     context: host
     description: Seed local database with example project data
@@ -395,6 +396,7 @@ tasks:
     requirements:
       toolchains:
         - node
+    internal: true
   verify:ci:
     context: host
     description: Run the main CI-style verify sequence for source changes
