@@ -197,6 +197,16 @@ jobs:
           ota up --workflow verify --native --dry-run --json . > ota-up-verify-dry-run.json
           cat ota-up-verify-dry-run.json
 
+      - name: Execute safe verification tasks
+        if: ${{ matrix.native_deps }}
+        timeout-minutes: 45
+        shell: bash
+        run: |
+          ota run install --native --stream .
+          ota run lint --native --stream .
+          ota run typecheck --native --stream .
+          ota run build --native --stream .
+
       - name: Dry-run selfhost workflow
         if: ${{ matrix.docker_ready }}
         shell: bash
