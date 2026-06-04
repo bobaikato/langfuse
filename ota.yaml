@@ -265,6 +265,7 @@ tasks:
         - node
       checks:
         - workspace-dependencies-installed
+        - source-env-present
     safe_for_agent: true
   build:ci:
     context: host
@@ -286,6 +287,7 @@ tasks:
         - node
       checks:
         - workspace-dependencies-installed
+        - source-env-present
   infra:dev:down:
     context: host
     description: Stop local development infrastructure containers
@@ -508,6 +510,9 @@ tasks:
     requirements:
       tools:
         docker: "*"
+      checks:
+        - source-env-present
+        - selfhost-env-compose-compatible
     runtime:
       kind: service
       surfaces:
@@ -655,6 +660,20 @@ checks:
     severity: error
     path: node_modules/.modules.yaml
     expect: file
+    timeout: 10000
+  - name: source-env-present
+    kind: file
+    severity: error
+    path: .env
+    expect: file
+    timeout: 10000
+  - name: selfhost-env-compose-compatible
+    kind: precondition
+    severity: error
+    run: >-
+      sh -c '[ -f .env ] && ! grep -Eq
+      "^(DATABASE_URL|DIRECT_URL)=\"postgresql://[^\"]+@(localhost|127\\.0\\.0\\.1):|^CLICKHOUSE_URL=\"http://(localhost|127\\.0\\.0\\.1):|^REDIS_HOST=\"?(localhost|127\\.0\\.0\\.1)\"?$"
+      .env'
     timeout: 10000
   - name: golang-migrate-installed
     kind: precondition
