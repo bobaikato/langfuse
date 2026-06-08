@@ -5,7 +5,7 @@ project:
   type: application
 metadata:
   ota:
-    minimum_version: "1.6.16"
+    minimum_version: "1.6.20"
 execution:
   default_context: host
   contexts:
@@ -212,11 +212,19 @@ tasks:
     notes: |
       This maps directly to repository root install commands used in contributor docs and CI.
     category: setup
-    run: pnpm install
+    prepare:
+      kind: dependency_hydration
+      medium: package_dependencies
+      source:
+        kind: node_package_manager
+        cwd: .
+        manager: pnpm
+        mode: install
     effects:
       writes:
         - node_modules
       network: true
+      network_kind: dependency_hydration
     depends_on:
       - setup:env:dev
     requirements:
@@ -439,7 +447,10 @@ tasks:
       This follows contributor docs (`pnpm run dev`) after local infra and schema setup.
       It starts the web and worker development services from source.
     category: dev
-    run: pnpm run dev
+    launch:
+      kind: command
+      exe: pnpm
+      args: [run, dev]
     depends_on:
       - install
       - db:migrate
@@ -470,7 +481,10 @@ tasks:
     notes: |
       This maps to the repo `start` script used by CI server-e2e paths after `pnpm run build`.
     category: dev
-    run: pnpm run start
+    launch:
+      kind: command
+      exe: pnpm
+      args: [run, start]
     depends_on:
       - build:ci
       - db:migrate
@@ -729,8 +743,8 @@ agent:
   bootstrap:
     ota:
       note: Install ota when missing so contributors and agents can run the readiness workflows declared in this contract.
-      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION=v1.6.16 sh
-      powershell: $env:OTA_VERSION='v1.6.16'; irm https://dist.ota.run/install.ps1 | iex
+      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_BRANCH=1.6.20-implementation sh -s -- --from-git
+      powershell: $env:OTA_GIT_BRANCH='1.6.20-implementation'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
   notes: |
     Use `ota tasks --use .` to list runnable tasks and review the agent-safe surface before execution.
     Use `ota run setup:env:dev .` and `ota run setup:env:prod .` to create env files only when missing.
