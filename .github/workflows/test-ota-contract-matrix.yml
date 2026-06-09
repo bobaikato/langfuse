@@ -10,7 +10,7 @@ on:
       ota_ref:
         description: Ota branch, tag, or commit to build for this matrix run
         required: false
-        default: bdf4ffdd8f4b9f8be451518337c4d7c0f633ca71
+        default: bdf4ffdde949ca62203c4e430ce87684ec75e65d
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow
         required: false
@@ -108,10 +108,10 @@ jobs:
           clickhouse client --version
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@bdf4ffdd8f4b9f8be451518337c4d7c0f633ca71
+        uses: ota-run/ota/.github/actions/install-ota-from-source@bdf4ffdde949ca62203c4e430ce87684ec75e65d
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || 'bdf4ffdd8f4b9f8be451518337c4d7c0f633ca71' }}
+          ref: ${{ github.event.inputs.ota_ref || 'bdf4ffdde949ca62203c4e430ce87684ec75e65d' }}
 
       - name: Validate contract
         shell: bash
@@ -382,7 +382,7 @@ jobs:
           persist-credentials: false
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@bdf4ffdd8f4b9f8be451518337c4d7c0f633ca71
+        uses: ota-run/ota/.github/actions/install-ota-from-source@bdf4ffdde949ca62203c4e430ce87684ec75e65d
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
           ref: ${{ github.event.inputs.ota_ref || 'main' }}
@@ -423,7 +423,7 @@ jobs:
           persist-credentials: false
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@bdf4ffdd8f4b9f8be451518337c4d7c0f633ca71
+        uses: ota-run/ota/.github/actions/install-ota-from-source@bdf4ffdde949ca62203c4e430ce87684ec75e65d
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
           ref: ${{ github.event.inputs.ota_ref || 'main' }}
