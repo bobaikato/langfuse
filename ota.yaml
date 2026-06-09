@@ -174,38 +174,37 @@ tasks:
     effects:
       writes:
         - .env.test
-  setup:env:prod:
+  setup:env:selfhost:
     context: host
-    description: Create `.env` from the self-host production template when missing
+    description: Create `.env.selfhost` from the published self-host template when missing
     notes: |
       Use this for the published self-host compose path.
-      It copies `.env.prod.example` to `.env` only when `.env` is absent.
+      It keeps self-host env truth separate from source-dev `.env` state.
     category: setup
     action:
       kind: copy_if_missing
       from: .env.prod.example
-      to: .env
+      to: .env.selfhost
     effects:
       writes:
-        - .env
-  setup:env:prod:compose-compat:
+        - .env.selfhost
+  setup:env:selfhost:compose-compat:
     context: host
-    description: Normalize self-host database host values for compose service naming
+    description: Normalize self-host env host values for local compose service naming
     notes: |
-      The compose stack service is named `postgres`.
-      If `.env` still carries the historical `@db:5432` host from the template, rewrite it to `@postgres:5432`
-      so published self-host runtime proof can reach the database deterministically.
+      The compose stack uses service names like `postgres`, `clickhouse`, and `redis`.
+      Normalize the published template into a deterministic local self-host overlay without touching source-dev `.env`.
     category: setup
     run: |
-      sh -c 'if [ -f .env ]; then
-        sed -i.bak "s/@db:5432\\//@postgres:5432\\//g" .env
-        rm -f .env.bak
+      sh -c 'if [ -f .env.selfhost ]; then
+        sed -i.bak "s/@db:5432\\//@postgres:5432\\//g" .env.selfhost
+        rm -f .env.selfhost.bak
       fi'
     depends_on:
-      - setup:env:prod
+      - setup:env:selfhost
     effects:
       writes:
-        - .env
+        - .env.selfhost
   install:
     context: host
     description: Install monorepo dependencies with pnpm
@@ -512,20 +511,20 @@ tasks:
     description: Start the published self-host Docker Compose stack
     notes: |
       This follows the main README local self-host path (`docker compose up`).
-      It runs packaged `langfuse` and `langfuse-worker` images with local dependencies.
+      It runs packaged `langfuse` and `langfuse-worker` images with a dedicated self-host env overlay
+      so source-dev `.env` state does not leak into the packaged runtime path.
     category: dev
-    run: docker compose up
+    run: docker compose --env-file .env.selfhost up
     effects:
       network: true
       external_state:
         - docker
     depends_on:
-      - setup:env:prod:compose-compat
+      - setup:env:selfhost:compose-compat
     requirements:
       tools:
         docker: "*"
       checks:
-        - source-env-present
         - selfhost-env-compose-compatible
     runtime:
       kind: service
@@ -644,7 +643,7 @@ workflows:
     intent: packaged_runtime
     description: README self-host flow using published Docker images
     prepare:
-      task: setup:env:prod
+      task: setup:env:selfhost
     run:
       task: selfhost:compose
     readiness:
@@ -685,9 +684,9 @@ checks:
     kind: precondition
     severity: error
     run: >-
-      sh -c '[ -f .env ] && ! grep -Eq
+      sh -c '[ ! -f .env.selfhost ] || ! grep -Eq
       "^(DATABASE_URL|DIRECT_URL)=\"postgresql://[^\"]+@(localhost|127\\.0\\.0\\.1):|^CLICKHOUSE_URL=\"http://(localhost|127\\.0\\.0\\.1):|^REDIS_HOST=\"?(localhost|127\\.0\\.0\\.1)\"?$"
-      .env'
+      .env.selfhost'
     timeout: 10000
   - name: golang-migrate-installed
     kind: precondition
@@ -722,6 +721,7 @@ agent:
   protected_paths:
     - ota.yaml
     - .env
+    - .env.selfhost
     - .env.test
     - package.json
     - pnpm-lock.yaml
@@ -747,7 +747,8 @@ agent:
       powershell: $env:OTA_GIT_REV='bdf4ffdde949ca62203c4e430ce87684ec75e65d'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
   notes: |
     Use `ota tasks --use .` to list runnable tasks and review the agent-safe surface before execution.
-    Use `ota run setup:env:dev .` and `ota run setup:env:prod .` to create env files only when missing.
+    Use `ota run setup:env:dev .` to create source-dev `.env` only when missing.
+    Use `ota run setup:env:selfhost .` to create the dedicated self-host env overlay only when missing.
     Use `ota up --workflow source-dev --native .` for the canonical source contributor loop.
     Use `ota up --workflow source-start --native .` for CI-style build then startup from source.
     Use `ota up --workflow verify --native .` before PRs.
