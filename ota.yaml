@@ -188,6 +188,46 @@ tasks:
     effects:
       writes:
         - .env.selfhost
+  setup:env:docker-build:
+    context: host
+    description: Create `.env.docker-build` from the development template when missing
+    notes: |
+      The source docker-build compose path needs its own env overlay.
+      Keep container-internal service discovery separate from source-dev `.env`.
+    category: setup
+    action:
+      kind: copy_if_missing
+      from: .env.dev.example
+      to: .env.docker-build
+    effects:
+      writes:
+        - .env.docker-build
+  setup:env:docker-build:compose-compat:
+    context: host
+    description: Normalize docker-build env host values for local compose service naming
+    notes: |
+      The source docker-build compose stack uses service names like `postgres`, `clickhouse`,
+      `minio`, and `redis` inside the network.
+      Normalize the copied development template into a deterministic docker-build overlay without
+      touching source-dev `.env`.
+    category: setup
+    run: |
+      sh -c 'if [ -f .env.docker-build ]; then
+        sed -i.bak "s#^DATABASE_URL=.*#DATABASE_URL=\"postgresql://postgres:postgres@postgres:5432/postgres\"#g" .env.docker-build
+        sed -i.bak "s#^DIRECT_URL=.*#DIRECT_URL=\"postgresql://postgres:postgres@postgres:5432/postgres\"#g" .env.docker-build
+        sed -i.bak "s#^CLICKHOUSE_MIGRATION_URL=.*#CLICKHOUSE_MIGRATION_URL=\"clickhouse://clickhouse:9000\"#g" .env.docker-build
+        sed -i.bak "s#^CLICKHOUSE_URL=.*#CLICKHOUSE_URL=\"http://clickhouse:8123\"#g" .env.docker-build
+        sed -i.bak "s#^LANGFUSE_S3_BATCH_EXPORT_ENDPOINT=.*#LANGFUSE_S3_BATCH_EXPORT_ENDPOINT=http://minio:9000#g" .env.docker-build
+        sed -i.bak "s#^LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT=.*#LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT=http://minio:9000#g" .env.docker-build
+        sed -i.bak "s#^LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=.*#LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://minio:9000#g" .env.docker-build
+        sed -i.bak "s#^REDIS_HOST=.*#REDIS_HOST=\"redis\"#g" .env.docker-build
+        rm -f .env.docker-build.bak
+      fi'
+    depends_on:
+      - setup:env:docker-build
+    effects:
+      writes:
+        - .env.docker-build
   setup:env:selfhost:compose-compat:
     context: host
     description: Normalize self-host env host values for local compose service naming
@@ -551,23 +591,25 @@ tasks:
     notes: |
       This maps to `test-docker-build` CI behavior before runtime checks.
     category: build
-    run: docker compose -f docker-compose.build.yml build
+    run: docker compose --env-file .env.docker-build -f docker-compose.build.yml build
     effects:
       network: true
       external_state:
         - docker
     depends_on:
-      - setup:env:dev
+      - setup:env:docker-build:compose-compat
     requirements:
       tools:
         docker: "*"
+      checks:
+        - docker-build-env-compose-compatible
   run:docker:
     context: host
     description: Start source-built Docker stack and wait for health checks
     notes: |
       This maps to CI docker-build readiness checks against web (`3000`) and worker (`3030`) APIs.
     category: dev
-    run: docker compose -f docker-compose.build.yml up
+    run: docker compose --env-file .env.docker-build -f docker-compose.build.yml up
     effects:
       external_state:
         - docker
@@ -576,6 +618,8 @@ tasks:
     requirements:
       tools:
         docker: "*"
+      checks:
+        - docker-build-env-compose-compatible
     runtime:
       kind: service
       surfaces:
@@ -657,7 +701,7 @@ workflows:
     intent: packaged_runtime
     description: Source docker-build compose path used in CI docker image verification
     prepare:
-      task: setup:env:dev
+      task: setup:env:docker-build
     run:
       task: run:docker
     readiness:
@@ -687,6 +731,14 @@ checks:
       sh -c '[ ! -f .env.selfhost ] || ! grep -Eq
       "^(DATABASE_URL|DIRECT_URL)=\"postgresql://[^\"]+@(localhost|127\\.0\\.0\\.1):|^CLICKHOUSE_URL=\"http://(localhost|127\\.0\\.0\\.1):|^REDIS_HOST=\"?(localhost|127\\.0\\.0\\.1)\"?$"
       .env.selfhost'
+    timeout: 10000
+  - name: docker-build-env-compose-compatible
+    kind: precondition
+    severity: error
+    run: >-
+      sh -c '[ ! -f .env.docker-build ] || ! grep -Eq
+      "^(DATABASE_URL|DIRECT_URL)=\"postgresql://[^\"]+@(localhost|127\\.0\\.0\\.1):|^CLICKHOUSE_(MIGRATION_URL|URL)=\"?(clickhouse://|http://)(localhost|127\\.0\\.0\\.1):|^LANGFUSE_S3_(BATCH_EXPORT|MEDIA_UPLOAD|EVENT_UPLOAD)_ENDPOINT=\"?http://(localhost|127\\.0\\.0\\.1):|^REDIS_HOST=\"?(localhost|127\\.0\\.0\\.1)\"?$"
+      .env.docker-build'
     timeout: 10000
   - name: golang-migrate-installed
     kind: precondition
@@ -721,6 +773,7 @@ agent:
   protected_paths:
     - ota.yaml
     - .env
+    - .env.docker-build
     - .env.selfhost
     - .env.test
     - package.json
@@ -748,6 +801,7 @@ agent:
   notes: |
     Use `ota tasks --use .` to list runnable tasks and review the agent-safe surface before execution.
     Use `ota run setup:env:dev .` to create source-dev `.env` only when missing.
+    Use `ota run setup:env:docker-build:compose-compat .` to create the dedicated docker-build env overlay only when missing.
     Use `ota run setup:env:selfhost .` to create the dedicated self-host env overlay only when missing.
     Use `ota up --workflow source-dev --native .` for the canonical source contributor loop.
     Use `ota up --workflow source-start --native .` for CI-style build then startup from source.
