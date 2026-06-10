@@ -10,7 +10,7 @@ on:
       ota_ref:
         description: Ota branch, tag, or commit to build for this matrix run
         required: false
-        default: 7f2c92c4842927c60509140175b7809dc21caca4
+        default: 04bd078fd58e2686b2855eb8a57e6fdd746810a2
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow
         required: false
@@ -108,10 +108,10 @@ jobs:
           clickhouse client --version
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@7f2c92c4842927c60509140175b7809dc21caca4
+        uses: ota-run/ota/.github/actions/install-ota-from-source@04bd078fd58e2686b2855eb8a57e6fdd746810a2
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '7f2c92c4842927c60509140175b7809dc21caca4' }}
+          ref: ${{ github.event.inputs.ota_ref || '04bd078fd58e2686b2855eb8a57e6fdd746810a2' }}
 
       - name: Validate contract
         shell: bash
@@ -382,10 +382,10 @@ jobs:
           persist-credentials: false
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@7f2c92c4842927c60509140175b7809dc21caca4
+        uses: ota-run/ota/.github/actions/install-ota-from-source@04bd078fd58e2686b2855eb8a57e6fdd746810a2
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '7f2c92c4842927c60509140175b7809dc21caca4' }}
+          ref: ${{ github.event.inputs.ota_ref || '04bd078fd58e2686b2855eb8a57e6fdd746810a2' }}
 
       - name: Prove selfhost runtime
         shell: bash
@@ -423,10 +423,10 @@ jobs:
           persist-credentials: false
 
       - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@7f2c92c4842927c60509140175b7809dc21caca4
+        uses: ota-run/ota/.github/actions/install-ota-from-source@04bd078fd58e2686b2855eb8a57e6fdd746810a2
         with:
           repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '7f2c92c4842927c60509140175b7809dc21caca4' }}
+          ref: ${{ github.event.inputs.ota_ref || '04bd078fd58e2686b2855eb8a57e6fdd746810a2' }}
 
       - name: Prove docker-build runtime
         shell: bash
