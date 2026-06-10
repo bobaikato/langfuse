@@ -12,7 +12,7 @@ on:
         required: false
         default: 04bd078fd58e2686b2855eb8a57e6fdd746810a2
       run_source_docker_build:
-        description: Also prove the docker-build runtime workflow
+        description: Also prove the docker-build runtime workflow on manual runs
         required: false
         default: 'false'
         type: choice
@@ -415,7 +415,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     needs: contract
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_source_docker_build == 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_source_docker_build == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
