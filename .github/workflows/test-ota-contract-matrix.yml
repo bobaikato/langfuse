@@ -67,7 +67,7 @@ jobs:
             unsupported_host: true
             native_deps: false
             docker_ready: false
-            mode_label: native+container-pre-run
+            mode_label: contract+diagnostic-pre-run
 
     steps:
       - name: Checkout
@@ -310,7 +310,7 @@ jobs:
             echo "container dry-run blocked on this host (expected on non-Ubuntu hosted runners)"
           fi
 
-      - name: Doctor source-dev unsupported host
+      - name: Doctor source-dev unsupported host (Windows contract lane)
         id: doctor_source_dev
         if: ${{ matrix.unsupported_host }}
         timeout-minutes: 10
@@ -323,7 +323,7 @@ jobs:
           cat ota-doctor-source-dev.json
           echo "status=$doctor_status" >> "$GITHUB_OUTPUT"
 
-      - name: Assert unsupported host diagnosis
+      - name: Assert unsupported host diagnosis (Windows contract lane)
         if: ${{ matrix.unsupported_host }}
         shell: bash
         run: |
@@ -333,7 +333,7 @@ jobs:
           fi
           grep -F "Unsupported host platform for context" ota-doctor-source-dev.json
 
-      - name: Dry-run source-dev reports unsupported host
+      - name: Dry-run source-dev reports unsupported host (Windows contract lane)
         if: ${{ matrix.unsupported_host }}
         shell: bash
         run: |

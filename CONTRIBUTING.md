@@ -217,6 +217,10 @@ When you change the shared MCP setup:
     cp .env.dev.example .env
    ```
 
+   For compose-backed runtime proofs, the repo also ships dedicated overlays:
+   - `.env.docker-build.example` for source-built Docker Compose runtime
+   - `.env.selfhost.example` for published local self-host Compose runtime
+
 5. Run the entire infrastructure in dev mode. **Note**: if you have an existing database, this command wipes it. Also, this will fail on the very first run. Please run it again.
 
    ```bash
