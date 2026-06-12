@@ -215,6 +215,13 @@ jobs:
           ota run typecheck --native --stream .
           ota run build --native --stream .
 
+      - name: Materialize env overlays for full task coverage
+        if: ${{ matrix.native_deps && matrix.docker_ready }}
+        shell: bash
+        run: |
+          ota run setup:env:selfhost --native --stream .
+          ota run setup:env:docker-build --native --stream .
+
       - name: Dry-run all non-internal tasks (native coverage lane)
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         timeout-minutes: 150
