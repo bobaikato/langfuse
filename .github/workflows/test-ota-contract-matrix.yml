@@ -3,14 +3,10 @@ name: 'Test: Ota contract matrix'
 on:
   workflow_dispatch:
     inputs:
-      ota_repository:
-        description: Ota source repository to build for this matrix run
+      ota_version:
+        description: Released Ota version to install for this matrix run
         required: false
-        default: ota-run/ota
-      ota_ref:
-        description: Ota branch, tag, or commit to build for this matrix run
-        required: false
-        default: 452f93008ea88fb476344ff0b2a01045598b14e4
+        default: v1.6.20
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow on manual runs
         required: false
@@ -36,6 +32,10 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  OTA_NO_UPDATE_CHECK: '1'
+  OTA_VERSION: ${{ github.event.inputs.ota_version || 'v1.6.20' }}
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
@@ -107,11 +107,20 @@ jobs:
           sudo cp ch_client_dir/usr/bin/clickhouse /usr/local/bin/
           clickhouse client --version
 
-      - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@452f93008ea88fb476344ff0b2a01045598b14e4
-        with:
-          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '452f93008ea88fb476344ff0b2a01045598b14e4' }}
+      - name: Install ota (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION="${OTA_VERSION}" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install ota (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:OTA_VERSION = "${env:OTA_VERSION}"
+          irm https://dist.ota.run/install.ps1 | iex
+          (Join-Path $HOME ".local\\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Validate contract
         shell: bash
@@ -388,11 +397,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@452f93008ea88fb476344ff0b2a01045598b14e4
-        with:
-          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '452f93008ea88fb476344ff0b2a01045598b14e4' }}
+      - name: Install ota (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION="${OTA_VERSION}" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install ota (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:OTA_VERSION = "${env:OTA_VERSION}"
+          irm https://dist.ota.run/install.ps1 | iex
+          (Join-Path $HOME ".local\\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Prove selfhost runtime
         shell: bash
@@ -429,11 +447,20 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install ota from source
-        uses: ota-run/ota/.github/actions/install-ota-from-source@452f93008ea88fb476344ff0b2a01045598b14e4
-        with:
-          repository: ${{ github.event.inputs.ota_repository || 'ota-run/ota' }}
-          ref: ${{ github.event.inputs.ota_ref || '452f93008ea88fb476344ff0b2a01045598b14e4' }}
+      - name: Install ota (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -fsSL https://dist.ota.run/install.sh | OTA_VERSION="${OTA_VERSION}" sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install ota (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:OTA_VERSION = "${env:OTA_VERSION}"
+          irm https://dist.ota.run/install.ps1 | iex
+          (Join-Path $HOME ".local\\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Prove docker-build runtime
         shell: bash
