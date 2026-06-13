@@ -36,7 +36,6 @@ permissions:
 env:
   OTA_NO_UPDATE_CHECK: '1'
   OTA_VERSION: ${{ github.event.inputs.ota_version || 'v1.6.20' }}
-  OTA_NO_UPDATE_CHECK: '1'
   CLICKHOUSE_CLIENT_VERSION: '25.12.9.61'
 
 jobs:
