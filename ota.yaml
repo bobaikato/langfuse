@@ -296,7 +296,15 @@ tasks:
     context: host
     description: Stop local development infrastructure containers
     category: setup
-    run: docker compose -f docker-compose.dev.yml down
+    adapter_inputs:
+      compose:
+        files:
+          - docker-compose.dev.yml
+    command:
+      exe: docker
+      args:
+        - compose
+        - down
     effects:
       external_state:
         - docker
@@ -511,8 +519,10 @@ tasks:
       It runs packaged `langfuse` and `langfuse-worker` images with a dedicated self-host env overlay
       so source-dev `.env` state does not leak into the packaged runtime path.
     category: dev
-    env_files:
-      - .env.selfhost
+    adapter_inputs:
+      compose:
+        env_files:
+          - .env.selfhost
     launch:
       kind: command
       exe: docker
@@ -542,7 +552,15 @@ tasks:
     context: host
     description: Stop the published self-host Docker Compose stack
     category: setup
-    run: docker compose down
+    adapter_inputs:
+      compose:
+        env_files:
+          - .env.selfhost
+    command:
+      exe: docker
+      args:
+        - compose
+        - down
     effects:
       external_state:
         - docker
@@ -555,9 +573,17 @@ tasks:
     notes: |
       This maps to `test-docker-build` CI behavior before runtime checks.
     category: build
-    env_files:
-      - .env.docker-build
-    run: docker compose -f docker-compose.build.yml build
+    adapter_inputs:
+      compose:
+        env_files:
+          - .env.docker-build
+        files:
+          - docker-compose.build.yml
+    command:
+      exe: docker
+      args:
+        - compose
+        - build
     effects:
       network: true
       external_state:
@@ -575,15 +601,17 @@ tasks:
     notes: |
       This maps to CI docker-build readiness checks against web (`3000`) and worker (`3030`) APIs.
     category: dev
-    env_files:
-      - .env.docker-build
+    adapter_inputs:
+      compose:
+        env_files:
+          - .env.docker-build
+        files:
+          - docker-compose.build.yml
     launch:
       kind: command
       exe: docker
       args:
         - compose
-        - -f
-        - docker-compose.build.yml
         - up
     effects:
       external_state:
@@ -607,7 +635,17 @@ tasks:
     context: host
     description: Stop source-built Docker stack
     category: setup
-    run: docker compose -f docker-compose.build.yml down
+    adapter_inputs:
+      compose:
+        env_files:
+          - .env.docker-build
+        files:
+          - docker-compose.build.yml
+    command:
+      exe: docker
+      args:
+        - compose
+        - down
     effects:
       external_state:
         - docker
