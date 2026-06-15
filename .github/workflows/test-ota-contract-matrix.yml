@@ -72,22 +72,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Node.js 24
-        if: ${{ !matrix.unsupported_host }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          package-manager-cache: false
-
-      - name: Enable pinned pnpm through Corepack
-        if: ${{ !matrix.unsupported_host }}
-        shell: bash
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.1.3 --activate
-          node --version
-          pnpm --version
-
       - name: Install native CI prerequisites on Ubuntu
         if: ${{ matrix.native_deps }}
         shell: bash
