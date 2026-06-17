@@ -238,7 +238,11 @@ tasks:
     notes: |
       This maps directly to the CI lint phase (`pnpm run lint`).
     category: test
-    run: pnpm run lint
+    command:
+      exe: pnpm
+      args:
+        - run
+        - lint
     requirements:
       toolchains:
         - node
@@ -251,7 +255,11 @@ tasks:
     notes: |
       This maps directly to the CI typecheck phase (`pnpm run typecheck`).
     category: test
-    run: pnpm run typecheck
+    command:
+      exe: pnpm
+      args:
+        - run
+        - typecheck
     requirements:
       toolchains:
         - node
@@ -264,7 +272,11 @@ tasks:
     notes: |
       This maps directly to CI build phases for web/worker validation.
     category: build
-    run: pnpm run build
+    command:
+      exe: pnpm
+      args:
+        - run
+        - build
     effects:
       writes:
         - .turbo
@@ -284,7 +296,11 @@ tasks:
       This is the from-scratch build path used by runtime workflows.
       Keep `build` itself dependency-free so agent-safe verification does not imply networked install.
     category: build
-    run: pnpm run build
+    command:
+      exe: pnpm
+      args:
+        - run
+        - build
     effects:
       writes:
         - .turbo
@@ -323,7 +339,11 @@ tasks:
     notes: |
       This follows CI and contributor paths after infrastructure startup.
     category: setup
-    run: pnpm run db:migrate
+    command:
+      exe: pnpm
+      args:
+        - run
+        - db:migrate
     effects:
       external_state:
         - postgres
@@ -343,7 +363,12 @@ tasks:
       This runs `packages/shared/clickhouse/scripts/up.sh` through the shared package script.
       It requires `golang-migrate` on the host.
     category: setup
-    run: pnpm --filter=shared run ch:up
+    command:
+      exe: pnpm
+      args:
+        - --filter=shared
+        - run
+        - ch:up
     effects:
       external_state:
         - clickhouse
@@ -366,7 +391,12 @@ tasks:
       This runs `packages/shared/clickhouse/scripts/dev-tables.sh`.
       It requires the host `clickhouse` CLI binary.
     category: setup
-    run: pnpm --filter=shared run ch:dev-tables
+    command:
+      exe: pnpm
+      args:
+        - --filter=shared
+        - run
+        - ch:dev-tables
     effects:
       external_state:
         - clickhouse
@@ -385,7 +415,12 @@ tasks:
     context: host
     description: Seed local database with standard repository seed data
     category: setup
-    run: pnpm --filter=shared run db:seed
+    command:
+      exe: pnpm
+      args:
+        - --filter=shared
+        - run
+        - db:seed
     effects:
       external_state:
         - postgres
@@ -403,7 +438,11 @@ tasks:
     context: host
     description: Seed local database with example project data
     category: setup
-    run: pnpm run db:seed:examples
+    command:
+      exe: pnpm
+      args:
+        - run
+        - db:seed:examples
     effects:
       external_state:
         - postgres
