@@ -876,8 +876,8 @@ agent:
   bootstrap:
     ota:
       note: Install ota when missing so contributors and agents can run the readiness workflows declared in this contract.
-      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_REV=8352c3fd5c31b8f20d5d60c9e56f06e7d9ded3c6 sh -s -- --from-git
-      powershell: $env:OTA_GIT_REV='8352c3fd5c31b8f20d5d60c9e56f06e7d9ded3c6'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
+      sh: curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_REV=8cc088c7be12761df8235dc6262ed2a4c128d85e sh -s -- --from-git
+      powershell: $env:OTA_GIT_REV='8cc088c7be12761df8235dc6262ed2a4c128d85e'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
   notes: |
     Use `ota tasks --use .` to list runnable tasks and review the agent-safe surface before execution.
     Use `ota run setup:env:dev .` to create source-dev `.env` only when missing.

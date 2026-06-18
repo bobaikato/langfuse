@@ -6,7 +6,7 @@ on:
       ota_git_rev:
         description: Ota git revision to install for this matrix run
         required: false
-        default: 8352c3fd5c31b8f20d5d60c9e56f06e7d9ded3c6
+        default: 8cc088c7be12761df8235dc6262ed2a4c128d85e
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow on manual runs
         required: false
@@ -35,7 +35,7 @@ permissions:
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
-  OTA_GIT_REV: ${{ github.event.inputs.ota_git_rev || '8352c3fd5c31b8f20d5d60c9e56f06e7d9ded3c6' }}
+  OTA_GIT_REV: ${{ github.event.inputs.ota_git_rev || '8cc088c7be12761df8235dc6262ed2a4c128d85e' }}
   CLICKHOUSE_CLIENT_VERSION: '25.12.9.61'
 
 jobs:
