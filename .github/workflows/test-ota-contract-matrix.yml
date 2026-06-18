@@ -6,7 +6,7 @@ on:
       ota_git_rev:
         description: Ota git revision to install for this matrix run
         required: false
-        default: 924c48111f325cfe2ccfe4e8318a08f1da65be56
+        default: 8352c3fd5c31b8f20d5d60c9e56f06e7d9ded3c6
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow on manual runs
         required: false
@@ -35,7 +35,7 @@ permissions:
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
-  OTA_GIT_REV: ${{ github.event.inputs.ota_git_rev || '924c48111f325cfe2ccfe4e8318a08f1da65be56' }}
+  OTA_GIT_REV: ${{ github.event.inputs.ota_git_rev || '8352c3fd5c31b8f20d5d60c9e56f06e7d9ded3c6' }}
   CLICKHOUSE_CLIENT_VERSION: '25.12.9.61'
 
 jobs:
@@ -87,6 +87,12 @@ jobs:
           dpkg-deb -x clickhouse-client.deb ch_client_dir
           sudo cp ch_client_dir/usr/bin/clickhouse /usr/local/bin/
           clickhouse client --version
+
+      - name: Install Node 24 for native host lanes
+        if: ${{ !matrix.unsupported_host }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Install ota (Unix)
         if: runner.os != 'Windows'
