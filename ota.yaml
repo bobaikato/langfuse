@@ -27,8 +27,34 @@ tools:
     version: "*"
     required: false
   migrate:
-    version: "*"
+    version: "4.19.1"
     required: false
+    acquisition:
+      provider: release_asset
+      source_config:
+        asset_by_platform:
+          linux_x86_64:
+            url: https://github.com/golang-migrate/migrate/releases/download/v{version}/migrate.linux-amd64.tar.gz
+            archive:
+              format: tar_gz
+              executable_path: migrate
+          linux_aarch64:
+            url: https://github.com/golang-migrate/migrate/releases/download/v{version}/migrate.linux-arm64.tar.gz
+            archive:
+              format: tar_gz
+              executable_path: migrate
+          macos_x86_64:
+            url: https://github.com/golang-migrate/migrate/releases/download/v{version}/migrate.darwin-amd64.tar.gz
+            archive:
+              format: tar_gz
+              executable_path: migrate
+          macos_aarch64:
+            url: https://github.com/golang-migrate/migrate/releases/download/v{version}/migrate.darwin-arm64.tar.gz
+            archive:
+              format: tar_gz
+              executable_path: migrate
+        version_args:
+          - -version
   clickhouse:
     version: "*"
     required: false
@@ -380,10 +406,9 @@ tasks:
       toolchains:
         - node
       tools:
-        migrate: "*"
+        migrate: "4.19.1"
       checks:
         - workspace-dependencies-installed
-        - golang-migrate-installed
   ch:dev-tables:
     context: host
     description: Create development-only ClickHouse tables used by dev and CI flows
@@ -797,11 +822,6 @@ checks:
       sh -c '[ ! -f .env.docker-build ] || ! grep -Eq
       "^(DATABASE_URL|DIRECT_URL)=\"postgresql://[^\"]+@(localhost|127\\.0\\.0\\.1):|^CLICKHOUSE_(MIGRATION_URL|URL)=\"?(clickhouse://|http://)(localhost|127\\.0\\.0\\.1):|^LANGFUSE_S3_(BATCH_EXPORT|MEDIA_UPLOAD|EVENT_UPLOAD)_ENDPOINT=\"?http://(localhost|127\\.0\\.0\\.1):|^REDIS_HOST=\"?(localhost|127\\.0\\.0\\.1)\"?$"
       .env.docker-build'
-    timeout: 10000
-  - name: golang-migrate-installed
-    kind: precondition
-    severity: error
-    run: sh -c "migrate -version"
     timeout: 10000
   - name: clickhouse-cli-installed
     kind: precondition
