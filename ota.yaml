@@ -876,8 +876,9 @@ agent:
   bootstrap:
     ota:
       note: Install ota when missing so contributors and agents can run the readiness workflows declared in this contract.
-      sh: curl -fsSL https://dist.ota.run/install.sh | CARGO_NET_GIT_FETCH_WITH_CLI=true OTA_GIT_REV=5bcf0509df09b2ecbbd0c8d6bc111e73b82a0c7f sh -s -- --from-git
-      powershell: $env:CARGO_NET_GIT_FETCH_WITH_CLI='true'; $env:OTA_GIT_REV='5bcf0509df09b2ecbbd0c8d6bc111e73b82a0c7f'; & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
+      source:
+        kind: branch
+        branch: 1.6.21-implementation
   notes: |
     Use `ota tasks --use .` to list runnable tasks and review the agent-safe surface before execution.
     Use `ota run setup:env:dev .` to create source-dev `.env` only when missing.
