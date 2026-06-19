@@ -6,7 +6,7 @@ on:
       ota_git_rev:
         description: Ota git revision to install for this matrix run
         required: false
-        default: 8cc088c7be12761df8235dc6262ed2a4c128d85e
+        default: 5bcf0509eacb2940d756f57a86d6f92e466b80fb
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow on manual runs
         required: false
@@ -35,7 +35,7 @@ permissions:
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
-  OTA_GIT_REV: ${{ github.event.inputs.ota_git_rev || '8cc088c7be12761df8235dc6262ed2a4c128d85e' }}
+  OTA_GIT_REV: ${{ github.event.inputs.ota_git_rev || '5bcf0509eacb2940d756f57a86d6f92e466b80fb' }}
   CLICKHOUSE_CLIENT_VERSION: '25.12.9.61'
 
 jobs:
@@ -163,43 +163,91 @@ jobs:
         if: ${{ !matrix.unsupported_host }}
         shell: bash
         run: |
+          set +e
           ota run install --dry-run --json . > ota-run-install-dry-run.json
+          status=$?
+          set -e
           cat ota-run-install-dry-run.json
+          jq -e '.ok != null and .dry_run == true' ota-run-install-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run verify task
         if: ${{ matrix.native_deps }}
         shell: bash
         run: |
+          set +e
           ota run verify:ci --dry-run --json . > ota-run-verify-ci-dry-run.json
+          status=$?
+          set -e
           cat ota-run-verify-ci-dry-run.json
+          jq -e '.ok != null and .dry_run == true' ota-run-verify-ci-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run default workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
         run: |
+          set +e
           ota up --dry-run --json . > ota-up-default-dry-run.json
+          status=$?
+          set -e
           cat ota-up-default-dry-run.json
+          jq -e '.ok != null and .dry_run == true and .status != null' ota-up-default-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run source-dev workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
         run: |
+          set +e
           ota up --workflow source-dev --native --dry-run --json . > ota-up-source-dev-dry-run.json
+          status=$?
+          set -e
           cat ota-up-source-dev-dry-run.json
+          jq -e '.ok != null and .dry_run == true and .status != null' ota-up-source-dev-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run source-start workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
         run: |
+          set +e
           ota up --workflow source-start --native --dry-run --json . > ota-up-source-start-dry-run.json
+          status=$?
+          set -e
           cat ota-up-source-start-dry-run.json
+          jq -e '.ok != null and .dry_run == true and .status != null' ota-up-source-start-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run verify workflow
         if: ${{ matrix.native_deps && matrix.docker_ready }}
         shell: bash
         run: |
+          set +e
           ota up --workflow verify --native --dry-run --json . > ota-up-verify-dry-run.json
+          status=$?
+          set -e
           cat ota-up-verify-dry-run.json
+          jq -e '.ok != null and .dry_run == true and .status != null' ota-up-verify-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Execute safe verification tasks
         if: ${{ matrix.native_deps }}
@@ -224,6 +272,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          run_task_preview() {
+            local task_name="$1"
+            set +e
+            ota run --native --dry-run --json "$task_name" .
+            local status=$?
+            set -e
+            case "$status" in
+              0|1) ;;
+              *) exit "$status" ;;
+            esac
+          }
           ota tasks --json . > ota-tasks-all.json
           jq -c '
             .tasks[]
@@ -245,11 +304,7 @@ jobs:
             task_name="$(jq -r '.name' <<<"$task_line")"
             runtime_native="$(jq -r '.runtime_native' <<<"$task_line")"
             echo ">>> [native] ${task_name} (runtime=${runtime_native})"
-            if [ "$runtime_native" = "true" ]; then
-              ota run --native --dry-run --json "$task_name" .
-            else
-              ota run --native --dry-run --json "$task_name" .
-            fi
+            run_task_preview "$task_name"
           done < ota-non-internal-native.jsonl
 
       - name: Dry-run all non-internal tasks (container coverage lane)
@@ -258,6 +313,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          run_task_preview() {
+            local task_name="$1"
+            set +e
+            ota run --container --dry-run --json "$task_name" .
+            local status=$?
+            set -e
+            case "$status" in
+              0|1) ;;
+              *) exit "$status" ;;
+            esac
+          }
           ota tasks --json . > ota-tasks-all.json
           jq -c '
             .tasks[]
@@ -279,26 +345,38 @@ jobs:
             task_name="$(jq -r '.name' <<<"$task_line")"
             runtime_container="$(jq -r '.runtime_container' <<<"$task_line")"
             echo ">>> [container] ${task_name} (runtime=${runtime_container})"
-            if [ "$runtime_container" = "true" ]; then
-              ota run --container --dry-run --json "$task_name" .
-            else
-              ota run --container --dry-run --json "$task_name" .
-            fi
+            run_task_preview "$task_name"
           done < ota-non-internal-container.jsonl
 
       - name: Dry-run selfhost workflow
         if: ${{ matrix.docker_ready }}
         shell: bash
         run: |
+          set +e
           ota up --workflow selfhost --native --dry-run --json . > ota-up-selfhost-dry-run.json
+          status=$?
+          set -e
           cat ota-up-selfhost-dry-run.json
+          jq -e '.ok != null and .dry_run == true and .status != null' ota-up-selfhost-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run docker-build workflow
         if: ${{ matrix.docker_ready }}
         shell: bash
         run: |
+          set +e
           ota up --workflow docker-build --native --dry-run --json . > ota-up-docker-build-dry-run.json
+          status=$?
+          set -e
           cat ota-up-docker-build-dry-run.json
+          jq -e '.ok != null and .dry_run == true and .status != null' ota-up-docker-build-dry-run.json > /dev/null
+          case "$status" in
+            0|1) ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Dry-run verify workflow (container mode, cross-OS)
         shell: bash
