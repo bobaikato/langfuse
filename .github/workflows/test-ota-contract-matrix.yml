@@ -464,6 +464,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify Docker engine availability
+        shell: bash
+        run: |
+          docker --version
+          docker info
+
       - name: Install ota (Unix)
         if: runner.os != 'Windows'
         shell: bash
@@ -514,6 +520,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Verify Docker engine availability
+        shell: bash
+        run: |
+          docker --version
+          docker info
 
       - name: Install ota (Unix)
         if: runner.os != 'Windows'
