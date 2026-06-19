@@ -23,9 +23,7 @@ toolchains:
       source: corepack
       mode: run
 tools:
-  podman:
-    version: "*"
-    required: false
+  docker: "*"
   migrate:
     version: "4.19.1"
     required: false
@@ -103,7 +101,7 @@ services:
   postgres:
     manager:
       kind: compose
-      engine: podman
+      engine: docker
       name: langfuse-dev
       file: docker-compose.dev.yml
       service: postgres
@@ -121,7 +119,7 @@ services:
   redis:
     manager:
       kind: compose
-      engine: podman
+      engine: docker
       name: langfuse-dev
       file: docker-compose.dev.yml
       service: redis
@@ -139,7 +137,7 @@ services:
   clickhouse:
     manager:
       kind: compose
-      engine: podman
+      engine: docker
       name: langfuse-dev
       file: docker-compose.dev.yml
       service: clickhouse
@@ -162,7 +160,7 @@ services:
   minio:
     manager:
       kind: compose
-      engine: podman
+      engine: docker
       name: langfuse-dev
       file: docker-compose.dev.yml
       service: minio
@@ -349,16 +347,16 @@ tasks:
         files:
           - docker-compose.dev.yml
     command:
-      exe: podman
+      exe: docker
       args:
         - compose
         - down
     effects:
       external_state:
-        - podman
+        - docker
     requirements:
       tools:
-        podman: "*"
+        docker: "*"
   db:migrate:
     context: host
     description: Apply Prisma migrations for local development
@@ -595,19 +593,19 @@ tasks:
           - .env.selfhost
     launch:
       kind: command
-      exe: podman
+      exe: docker
       args:
         - compose
         - up
     effects:
       network: true
       external_state:
-        - podman
+        - docker
     depends_on:
       - setup:env:selfhost
     requirements:
       tools:
-        podman: "*"
+        docker: "*"
       checks:
         - selfhost-env-compose-compatible
     runtime:
@@ -627,16 +625,16 @@ tasks:
         env_files:
           - .env.selfhost
     command:
-      exe: podman
+      exe: docker
       args:
         - compose
         - down
     effects:
       external_state:
-        - podman
+        - docker
     requirements:
       tools:
-        podman: "*"
+        docker: "*"
   build:docker:
     context: host
     description: Build source Docker images with the repository docker-build compose file
@@ -650,19 +648,19 @@ tasks:
         files:
           - docker-compose.build.yml
     command:
-      exe: podman
+      exe: docker
       args:
         - compose
         - build
     effects:
       network: true
       external_state:
-        - podman
+        - docker
     depends_on:
       - setup:env:docker-build
     requirements:
       tools:
-        podman: "*"
+        docker: "*"
       checks:
         - docker-build-env-compose-compatible
   run:docker:
@@ -679,18 +677,18 @@ tasks:
           - docker-compose.build.yml
     launch:
       kind: command
-      exe: podman
+      exe: docker
       args:
         - compose
         - up
     effects:
       external_state:
-        - podman
+        - docker
     depends_on:
       - build:docker
     requirements:
       tools:
-        podman: "*"
+        docker: "*"
       checks:
         - docker-build-env-compose-compatible
     runtime:
@@ -712,16 +710,16 @@ tasks:
         files:
           - docker-compose.build.yml
     command:
-      exe: podman
+      exe: docker
       args:
         - compose
         - down
     effects:
       external_state:
-        - podman
+        - docker
     requirements:
       tools:
-        podman: "*"
+        docker: "*"
 workflows:
   default: source-dev
   source-dev:
