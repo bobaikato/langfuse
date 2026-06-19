@@ -3,10 +3,6 @@ name: 'Test: Ota contract matrix'
 on:
   workflow_dispatch:
     inputs:
-      ota_git_branch:
-        description: Ota branch to install for this matrix run
-        required: false
-        default: 1.6.21-implementation
       run_source_docker_build:
         description: Also prove the docker-build runtime workflow on manual runs
         required: false
@@ -35,7 +31,6 @@ permissions:
 
 env:
   OTA_NO_UPDATE_CHECK: '1'
-  OTA_GIT_BRANCH: ${{ github.event.inputs.ota_git_branch || '1.6.21-implementation' }}
   CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
   CLICKHOUSE_CLIENT_VERSION: '25.12.9.61'
 
@@ -95,21 +90,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install ota (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_BRANCH="${OTA_GIT_BRANCH}" sh -s -- --from-git
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Install ota (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $env:CARGO_NET_GIT_FETCH_WITH_CLI = "${env:CARGO_NET_GIT_FETCH_WITH_CLI}"
-          $env:OTA_GIT_BRANCH = "${env:OTA_GIT_BRANCH}"
-          & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
-          (Join-Path $env:LOCALAPPDATA "ota\\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Set up ota
+        uses: ota-run/setup@v1
+        with:
+          source: contract
+          contract-path: ota.yaml
 
       - name: Validate contract
         shell: bash
@@ -470,21 +455,11 @@ jobs:
           docker --version
           docker info
 
-      - name: Install ota (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_BRANCH="${OTA_GIT_BRANCH}" sh -s -- --from-git
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Install ota (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $env:CARGO_NET_GIT_FETCH_WITH_CLI = "${env:CARGO_NET_GIT_FETCH_WITH_CLI}"
-          $env:OTA_GIT_BRANCH = "${env:OTA_GIT_BRANCH}"
-          & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
-          (Join-Path $env:LOCALAPPDATA "ota\\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Set up ota
+        uses: ota-run/setup@v1
+        with:
+          source: contract
+          contract-path: ota.yaml
 
       - name: Prove selfhost runtime
         shell: bash
@@ -527,21 +502,11 @@ jobs:
           docker --version
           docker info
 
-      - name: Install ota (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          curl -fsSL https://dist.ota.run/install.sh | OTA_GIT_BRANCH="${OTA_GIT_BRANCH}" sh -s -- --from-git
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Install ota (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $env:CARGO_NET_GIT_FETCH_WITH_CLI = "${env:CARGO_NET_GIT_FETCH_WITH_CLI}"
-          $env:OTA_GIT_BRANCH = "${env:OTA_GIT_BRANCH}"
-          & ([scriptblock]::Create((irm https://dist.ota.run/install.ps1))) -FromGit
-          (Join-Path $env:LOCALAPPDATA "ota\\bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Set up ota
+        uses: ota-run/setup@v1
+        with:
+          source: contract
+          contract-path: ota.yaml
 
       - name: Prove docker-build runtime
         shell: bash
