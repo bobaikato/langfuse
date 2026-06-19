@@ -91,7 +91,7 @@ jobs:
           node-version: '24'
 
       - name: Set up ota
-        uses: ota-run/setup@v1
+        uses: ota-run/setup@v1.0.8
         with:
           source: contract
           contract-path: ota.yaml
@@ -456,7 +456,7 @@ jobs:
           docker info
 
       - name: Set up ota
-        uses: ota-run/setup@v1
+        uses: ota-run/setup@v1.0.8
         with:
           source: contract
           contract-path: ota.yaml
@@ -503,7 +503,7 @@ jobs:
           docker info
 
       - name: Set up ota
-        uses: ota-run/setup@v1
+        uses: ota-run/setup@v1.0.8
         with:
           source: contract
           contract-path: ota.yaml
