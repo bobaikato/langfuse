@@ -488,6 +488,8 @@ tasks:
     category: test
     run: pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test
     effects:
+      network: true
+      network_kind: integration_test
       writes:
         - .turbo
         - web/.next
