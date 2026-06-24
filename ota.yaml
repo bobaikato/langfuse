@@ -594,11 +594,8 @@ tasks:
         env_files:
           - .env.selfhost
     launch:
-      kind: command
-      exe: docker
-      args:
-        - compose
-        - up
+      kind: compose
+      action: up
     effects:
       network: true
       external_state:
@@ -649,11 +646,8 @@ tasks:
           - .env.docker-build
         files:
           - docker-compose.build.yml
-    command:
-      exe: docker
-      args:
-        - compose
-        - build
+    compose:
+      kind: build
     effects:
       network: true
       external_state:
@@ -711,11 +705,8 @@ tasks:
           - .env.docker-build
         files:
           - docker-compose.build.yml
-    command:
-      exe: docker
-      args:
-        - compose
-        - down
+    compose:
+      kind: down
     effects:
       external_state:
         - docker
